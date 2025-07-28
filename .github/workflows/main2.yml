@@ -1,50 +1,50 @@
-name: Go
+name: CI/CD pipeline
 
-on: push
-
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
 
 jobs:
   test:
+    name: Проверка и тесты
     runs-on: ubuntu-latest
-    container: golang:1.23.2
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Клонирование репозитория
+        uses: actions/checkout@v3
 
-      - name: Run Unit Tests
-        run: GOOS=linux GOARCH=amd64 go test ./...
+      - name: Установка Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
 
-      - name: Vet
-        run: |
-          go vet ./...
+      - name: Проверка кода на ошибки
+        run: go vet ./...
 
-  deploy:
-    name: Push Docker image to Docker Hub
-    runs-on: ubuntu-latest
+      - name: Запуск тестов
+        run: go test ./... -v
+
+  docker-publish:
+    name: Публикация Docker-образа в DockerHub
     needs: test
-    if: startsWith(github.ref, 'refs/tags')
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Клонирование репозитория
+        uses: actions/checkout@v3
 
-      - name: Set up Docker buildx
-        uses: docker/setup-buildx-action@v3.11.1
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3.4.0
+      - name: Вход в DockerHub
+        uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5.7.0
-        with:
-          images: final12
+      - name: Построение Docker-образа
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/parcel-tracker:${{ github.ref_name }} .
 
-      - name: Build and push Docker Image
-        uses: docker/build-push-action@v6.18.0
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+      - name: Публикация Docker-образа
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/parcel-tracker:${{ github.ref_name }}
