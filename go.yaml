@@ -6,7 +6,7 @@ on: push
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: golang:1.23.2
+    container: golang:1.24.0
     steps:
       - uses: actions/checkout@v4
 
@@ -47,4 +47,4 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }
+          labels: ${{ steps.meta.outputs.labels }}
